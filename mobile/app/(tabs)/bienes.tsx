@@ -8,14 +8,16 @@ import {
   ActivityIndicator,
   Modal,
   ScrollView,
-  SafeAreaView,
-  StatusBar,
+  StyleSheet,
+  Platform,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { Search, ChevronDown, Building, PackageOpen } from 'lucide-react-native';
 import apiClient from '../../src/services/apiClient';
 import { BienThumbnail } from '../../src/components/BienThumbnail';
 import { Bien, Oficina, EstadoInventario } from '../../src/types';
+import { MARCONA_COLORS } from '../../src/theme/styles';
 
 export default function BienesScreen() {
   const router = useRouter();
@@ -81,32 +83,33 @@ export default function BienesScreen() {
 
     return (
       <TouchableOpacity
-        className="bg-white rounded-2xl border border-slate-200 p-4 mb-3 shadow-2xs active:opacity-90"
+        style={styles.card}
         onPress={() => router.push(`/bien/${encodeURIComponent(item.codigo_qr)}`)}
+        activeOpacity={0.85}
       >
         {/* Cabecera Tarjeta: QR a la izquierda, Badge a la derecha */}
-        <View className="flex-row items-center justify-between mb-2.5">
-          <Text className="font-mono text-xs font-bold text-blue-900 bg-blue-50 border border-blue-200/60 px-2.5 py-0.5 rounded-md">
-            {item.codigo_qr}
-          </Text>
+        <View style={styles.cardHeader}>
+          <Text style={styles.qrBadge}>{item.codigo_qr}</Text>
 
           <View
-            className={`px-2.5 py-0.5 rounded-full ${
+            style={[
+              styles.statusBadge,
               estado === 'INVENTARIADO'
-                ? 'bg-green-100 border border-green-200'
+                ? styles.badgeInventariado
                 : estado === 'FALTANTE'
-                ? 'bg-red-100 border border-red-200'
-                : 'bg-amber-100 border border-amber-200'
-            }`}
+                ? styles.badgeFaltante
+                : styles.badgePendiente,
+            ]}
           >
             <Text
-              className={`text-[10px] font-bold ${
+              style={[
+                styles.statusBadgeText,
                 estado === 'INVENTARIADO'
-                  ? 'text-green-800'
+                  ? { color: MARCONA_COLORS.green }
                   : estado === 'FALTANTE'
-                  ? 'text-red-800'
-                  : 'text-amber-800'
-              }`}
+                  ? { color: MARCONA_COLORS.red }
+                  : { color: MARCONA_COLORS.gold },
+              ]}
             >
               {estado === 'INVENTARIADO'
                 ? 'Inventariado'
@@ -118,18 +121,18 @@ export default function BienesScreen() {
         </View>
 
         {/* Fila Contenido: Miniatura + Nombre y Subtítulo */}
-        <View className="flex-row items-center">
+        <View style={styles.cardBody}>
           <BienThumbnail
             fotoUrl={item.foto_url}
             categoria={item.categoria}
-            size={48}
+            size={52}
           />
 
-          <View className="flex-1 ml-3">
-            <Text className="text-sm font-extrabold text-slate-900 leading-snug" numberOfLines={1}>
+          <View style={styles.cardTexts}>
+            <Text style={styles.cardTitle} numberOfLines={1}>
               {item.nombre}
             </Text>
-            <Text className="text-xs text-slate-500 font-medium mt-0.5" numberOfLines={1}>
+            <Text style={styles.cardSubtitle} numberOfLines={1}>
               {item.trabajador?.nombre_completo || 'Sin responsable'} ·{' '}
               {item.oficina?.sigla || item.oficina?.nombre || 'General'}
             </Text>
@@ -140,26 +143,21 @@ export default function BienesScreen() {
   };
 
   return (
-    <SafeAreaView className="flex-1 bg-slate-50">
-      <StatusBar barStyle="dark-content" />
-
+    <SafeAreaView style={styles.safeArea} edges={['top']}>
       {/* Header Superior */}
-      <View className="bg-white border-b border-slate-200 px-5 pt-3 pb-3 flex-row items-center justify-between shadow-2xs">
-        <Text className="text-base font-extrabold text-slate-900">
-          Catálogo de Bienes
-        </Text>
-        <Text className="font-mono text-xs font-bold text-slate-500 bg-slate-100 px-2.5 py-1 rounded-full">
-          {totalCount} totales
-        </Text>
+      <View style={styles.header}>
+        <Text style={styles.headerTitle}>Catálogo de Bienes</Text>
+        <Text style={styles.countBadge}>{totalCount} totales</Text>
       </View>
 
-      <View className="p-4 flex-1">
-        {/* Barra de Búsqueda */}
-        <View className="flex-row items-center bg-white border border-slate-200 rounded-2xl px-3.5 py-2.5 mb-3 shadow-2xs">
-          <Search size={18} color="#64748B" />
+      <View style={styles.container}>
+        {/* Barra de Búsqueda de Altura 44px */}
+        <View style={styles.searchBar}>
+          <Search size={18} color={MARCONA_COLORS.slate500} />
           <TextInput
-            className="flex-1 ml-2.5 text-sm text-slate-800"
+            style={styles.searchInput}
             placeholder="Buscar por QR, serie, marca o trabajador..."
+            placeholderTextColor={MARCONA_COLORS.slate400}
             value={search}
             onChangeText={setSearch}
             onSubmitEditing={fetchBienes}
@@ -168,24 +166,29 @@ export default function BienesScreen() {
         </View>
 
         {/* Chips Horizontales de Estado con Scroll */}
-        <View className="mb-3">
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} className="flex-row gap-2">
+        <View style={styles.chipsContainer}>
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.chipsScroll}
+          >
             {(['TODOS', 'INVENTARIADO', 'PENDIENTE', 'FALTANTE'] as const).map((est) => {
               const isActive = estadoFilter === est;
               return (
                 <TouchableOpacity
                   key={est}
-                  className={`px-4 py-2 rounded-xl border ${
-                    isActive
-                      ? 'bg-blue-900 border-blue-900 shadow-2xs'
-                      : 'bg-white border-slate-200'
-                  }`}
+                  style={[
+                    styles.chip,
+                    isActive ? styles.chipActive : styles.chipInactive,
+                  ]}
                   onPress={() => setEstadoFilter(est)}
+                  activeOpacity={0.8}
                 >
                   <Text
-                    className={`text-xs font-bold capitalize ${
-                      isActive ? 'text-white' : 'text-slate-600'
-                    }`}
+                    style={[
+                      styles.chipText,
+                      isActive ? styles.chipTextActive : styles.chipTextInactive,
+                    ]}
                   >
                     {est === 'TODOS'
                       ? 'Todos'
@@ -202,31 +205,30 @@ export default function BienesScreen() {
         </View>
 
         {/* Fila Selector Desplegable de Oficina */}
-        <View className="flex-row items-center justify-between bg-white border border-slate-200 rounded-xl px-3.5 py-2.5 mb-4 shadow-2xs">
-          <View className="flex-row items-center flex-1 pr-2">
-            <Building size={15} color="#64748B" />
-            <Text className="text-xs font-bold text-slate-700 ml-2">Oficina:</Text>
-            <Text className="text-xs text-slate-500 ml-1.5 flex-1" numberOfLines={1}>
+        <View style={styles.officeSelectorRow}>
+          <View style={styles.officeSelectorLeft}>
+            <Building size={15} color={MARCONA_COLORS.slate500} />
+            <Text style={styles.officeSelectorLabel}>Oficina:</Text>
+            <Text style={styles.officeSelectorValue} numberOfLines={1}>
               {selectedOficina ? selectedOficina.nombre : 'Todas las oficinas'}
             </Text>
           </View>
 
           <TouchableOpacity
-            className="flex-row items-center bg-slate-100 px-2.5 py-1 rounded-lg"
+            style={styles.filterBtn}
             onPress={() => setOficinaModalVisible(true)}
+            activeOpacity={0.7}
           >
-            <Text className="text-xs font-bold text-blue-900 mr-1">Filtrar</Text>
-            <ChevronDown size={14} color="#1E3A8A" />
+            <Text style={styles.filterBtnText}>Filtrar</Text>
+            <ChevronDown size={14} color={MARCONA_COLORS.blue} />
           </TouchableOpacity>
         </View>
 
         {/* Listado Principal de Bienes */}
         {loading ? (
-          <View className="flex-1 items-center justify-center">
-            <ActivityIndicator size="large" color="#B91C1C" />
-            <Text className="text-xs text-slate-400 font-semibold mt-3">
-              Cargando catálogo...
-            </Text>
+          <View style={styles.loaderBox}>
+            <ActivityIndicator size="large" color={MARCONA_COLORS.red} />
+            <Text style={styles.loaderText}>Cargando catálogo...</Text>
           </View>
         ) : (
           <FlatList
@@ -234,14 +236,13 @@ export default function BienesScreen() {
             keyExtractor={(item) => item.id.toString()}
             renderItem={renderItem}
             showsVerticalScrollIndicator={false}
+            contentContainerStyle={styles.listContent}
             ListEmptyComponent={
-              <View className="items-center justify-center p-10 bg-white rounded-3xl border border-slate-200 mt-4">
-                <PackageOpen size={48} color="#94A3B8" />
-                <Text className="text-sm font-bold text-slate-700 mt-3">
-                  No se encontraron bienes
-                </Text>
-                <Text className="text-xs text-slate-400 text-center mt-1">
-                  Prueba cambiando los filtros de búsqueda o estado.
+              <View style={styles.emptyCard}>
+                <PackageOpen size={48} color={MARCONA_COLORS.slate400} />
+                <Text style={styles.emptyTitle}>Sin resultados</Text>
+                <Text style={styles.emptyText}>
+                  No se encontraron bienes con los filtros seleccionados.
                 </Text>
               </View>
             }
@@ -249,56 +250,65 @@ export default function BienesScreen() {
         )}
       </View>
 
-      {/* Modal Desplegable Selector de Oficinas */}
+      {/* Modal Desplegable de Oficinas */}
       <Modal
         visible={oficinaModalVisible}
         transparent
         animationType="slide"
         onRequestClose={() => setOficinaModalVisible(false)}
       >
-        <SafeAreaView className="flex-1 bg-black/60 justify-end">
-          <View className="bg-white rounded-t-3xl p-5 max-h-[75%] shadow-2xl">
-            <View className="flex-row items-center justify-between mb-4">
-              <Text className="text-base font-extrabold text-slate-900">
-                Seleccionar Oficina
-              </Text>
+        <SafeAreaView style={styles.modalBackdrop}>
+          <View style={styles.modalSheet}>
+            <View style={styles.modalSheetHeader}>
+              <Text style={styles.modalSheetTitle}>Filtrar por Oficina</Text>
               <TouchableOpacity onPress={() => setOficinaModalVisible(false)}>
-                <Text className="text-sm font-bold text-red-700">Cerrar</Text>
+                <Text style={styles.modalSheetClose}>Cerrar</Text>
               </TouchableOpacity>
             </View>
 
-            <ScrollView className="space-y-1">
+            <ScrollView style={styles.modalScroll} showsVerticalScrollIndicator={false}>
               <TouchableOpacity
-                className={`p-3.5 rounded-xl flex-row items-center justify-between ${
-                  selectedOficina === null ? 'bg-blue-50 border border-blue-200' : 'bg-slate-50'
-                } mb-1`}
+                style={[
+                  styles.officeOption,
+                  !selectedOficina && styles.officeOptionActive,
+                ]}
                 onPress={() => {
                   setSelectedOficina(null);
                   setOficinaModalVisible(false);
                 }}
               >
-                <Text className="text-sm font-bold text-slate-800">Todas las oficinas</Text>
-                {selectedOficina === null && <Text className="text-xs font-bold text-blue-900">✓</Text>}
+                <Text
+                  style={[
+                    styles.officeOptionText,
+                    !selectedOficina && styles.officeOptionTextActive,
+                  ]}
+                >
+                  Todas las oficinas
+                </Text>
               </TouchableOpacity>
 
               {oficinas.map((of) => {
-                const isSelected = selectedOficina?.id === of.id;
+                const isSel = selectedOficina?.id === of.id;
                 return (
                   <TouchableOpacity
                     key={of.id}
-                    className={`p-3.5 rounded-xl flex-row items-center justify-between ${
-                      isSelected ? 'bg-blue-50 border border-blue-200' : 'bg-slate-50'
-                    } mb-1`}
+                    style={[
+                      styles.officeOption,
+                      isSel && styles.officeOptionActive,
+                    ]}
                     onPress={() => {
                       setSelectedOficina(of);
                       setOficinaModalVisible(false);
                     }}
                   >
-                    <View className="flex-1 pr-2">
-                      <Text className="text-sm font-bold text-slate-800">{of.nombre}</Text>
-                      <Text className="text-xs text-slate-400">Sigla: {of.sigla}</Text>
-                    </View>
-                    {isSelected && <Text className="text-xs font-bold text-blue-900">✓</Text>}
+                    <Text
+                      style={[
+                        styles.officeOptionText,
+                        isSel && styles.officeOptionTextActive,
+                      ]}
+                    >
+                      {of.nombre} ({of.sigla})
+                    </Text>
                   </TouchableOpacity>
                 );
               })}
@@ -309,3 +319,294 @@ export default function BienesScreen() {
     </SafeAreaView>
   );
 }
+
+const styles = StyleSheet.create({
+  safeArea: {
+    flex: 1,
+    backgroundColor: MARCONA_COLORS.slate50,
+  },
+  header: {
+    backgroundColor: MARCONA_COLORS.white,
+    borderBottomWidth: 1,
+    borderBottomColor: MARCONA_COLORS.slate200,
+    paddingHorizontal: 20,
+    paddingVertical: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  headerTitle: {
+    fontSize: 16,
+    fontWeight: '800',
+    color: MARCONA_COLORS.slate900,
+  },
+  countBadge: {
+    fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace',
+    fontSize: 12,
+    fontWeight: '700',
+    color: MARCONA_COLORS.slate500,
+    backgroundColor: MARCONA_COLORS.slate100,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 999,
+  },
+  container: {
+    flex: 1,
+    padding: 16,
+  },
+  searchBar: {
+    height: 44,
+    backgroundColor: MARCONA_COLORS.white,
+    borderWidth: 1,
+    borderColor: MARCONA_COLORS.slate200,
+    borderRadius: 14,
+    paddingHorizontal: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  searchInput: {
+    flex: 1,
+    marginLeft: 10,
+    fontSize: 13,
+    color: MARCONA_COLORS.slate900,
+  },
+  chipsContainer: {
+    marginBottom: 12,
+  },
+  chipsScroll: {
+    gap: 8,
+  },
+  chip: {
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 12,
+    borderWidth: 1,
+  },
+  chipActive: {
+    backgroundColor: MARCONA_COLORS.blue,
+    borderColor: MARCONA_COLORS.blue,
+  },
+  chipInactive: {
+    backgroundColor: MARCONA_COLORS.white,
+    borderColor: MARCONA_COLORS.slate200,
+  },
+  chipText: {
+    fontSize: 12,
+    fontWeight: '700',
+  },
+  chipTextActive: {
+    color: MARCONA_COLORS.white,
+  },
+  chipTextInactive: {
+    color: MARCONA_COLORS.slate600,
+  },
+  officeSelectorRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: MARCONA_COLORS.white,
+    borderWidth: 1,
+    borderColor: MARCONA_COLORS.slate200,
+    borderRadius: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    marginBottom: 14,
+  },
+  officeSelectorLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+    paddingRight: 8,
+  },
+  officeSelectorLabel: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: MARCONA_COLORS.slate700,
+    marginLeft: 6,
+  },
+  officeSelectorValue: {
+    fontSize: 12,
+    color: MARCONA_COLORS.slate500,
+    marginLeft: 6,
+    flex: 1,
+  },
+  filterBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: MARCONA_COLORS.slate100,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 8,
+  },
+  filterBtnText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: MARCONA_COLORS.blue,
+    marginRight: 4,
+  },
+  loaderBox: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  loaderText: {
+    fontSize: 12,
+    color: MARCONA_COLORS.slate400,
+    fontWeight: '600',
+    marginTop: 10,
+  },
+  listContent: {
+    paddingBottom: 24,
+  },
+  card: {
+    backgroundColor: MARCONA_COLORS.white,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: MARCONA_COLORS.slate200,
+    padding: 14,
+    marginBottom: 10,
+    ...Platform.select({
+      ios: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 1 },
+        shadowOpacity: 0.04,
+        shadowRadius: 3,
+      },
+      android: {
+        elevation: 1,
+      },
+    }),
+  },
+  cardHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 10,
+  },
+  qrBadge: {
+    fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace',
+    fontSize: 11,
+    fontWeight: '700',
+    color: MARCONA_COLORS.blue,
+    backgroundColor: MARCONA_COLORS.blueSoft,
+    borderWidth: 1,
+    borderColor: '#BFDBFE',
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 6,
+  },
+  statusBadge: {
+    paddingHorizontal: 10,
+    paddingVertical: 3,
+    borderRadius: 999,
+    borderWidth: 1,
+  },
+  badgeInventariado: {
+    backgroundColor: '#DCFCE7',
+    borderColor: '#BBF7D0',
+  },
+  badgeFaltante: {
+    backgroundColor: '#FEE2E2',
+    borderColor: '#FECACA',
+  },
+  badgePendiente: {
+    backgroundColor: '#FEF3C7',
+    borderColor: '#FDE68A',
+  },
+  statusBadgeText: {
+    fontSize: 10,
+    fontWeight: '700',
+  },
+  cardBody: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  cardTexts: {
+    flex: 1,
+    marginLeft: 12,
+  },
+  cardTitle: {
+    fontSize: 14,
+    fontWeight: '800',
+    color: MARCONA_COLORS.slate900,
+  },
+  cardSubtitle: {
+    fontSize: 12,
+    fontWeight: '500',
+    color: MARCONA_COLORS.slate500,
+    marginTop: 2,
+  },
+  emptyCard: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 32,
+    backgroundColor: MARCONA_COLORS.white,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: MARCONA_COLORS.slate200,
+    marginTop: 16,
+  },
+  emptyTitle: {
+    fontSize: 15,
+    fontWeight: '800',
+    color: MARCONA_COLORS.slate700,
+    marginTop: 12,
+  },
+  emptyText: {
+    fontSize: 12,
+    color: MARCONA_COLORS.slate400,
+    textAlign: 'center',
+    marginTop: 4,
+  },
+  modalBackdrop: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.65)',
+    justifyContent: 'flex-end',
+  },
+  modalSheet: {
+    backgroundColor: MARCONA_COLORS.white,
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    maxHeight: '75%',
+    padding: 20,
+  },
+  modalSheetHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 16,
+  },
+  modalSheetTitle: {
+    fontSize: 16,
+    fontWeight: '800',
+    color: MARCONA_COLORS.slate900,
+  },
+  modalSheetClose: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: MARCONA_COLORS.red,
+  },
+  modalScroll: {
+    maxHeight: 320,
+  },
+  officeOption: {
+    paddingVertical: 14,
+    paddingHorizontal: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: MARCONA_COLORS.slate100,
+    borderRadius: 10,
+  },
+  officeOptionActive: {
+    backgroundColor: MARCONA_COLORS.blueSoft,
+  },
+  officeOptionText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: MARCONA_COLORS.slate800,
+  },
+  officeOptionTextActive: {
+    color: MARCONA_COLORS.blue,
+    fontWeight: '800',
+  },
+});

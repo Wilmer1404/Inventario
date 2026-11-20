@@ -7,10 +7,9 @@ import {
   Modal,
   Alert,
   StyleSheet,
-  SafeAreaView,
-  StatusBar,
-  ActivityIndicator,
+  Platform,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { CameraView, useCameraPermissions } from 'expo-camera';
 import {
@@ -24,6 +23,7 @@ import {
 } from 'lucide-react-native';
 import apiClient from '../../src/services/apiClient';
 import { CampanaInventario } from '../../src/types';
+import { MARCONA_COLORS } from '../../src/theme/styles';
 
 export default function EscanearScreen() {
   const router = useRouter();
@@ -78,7 +78,6 @@ export default function EscanearScreen() {
           }
         } catch (err: any) {
           if (err.response?.status === 404) {
-            // Bien no existe -> Navegar a Registro Rápido
             router.push({
               pathname: '/bien/nuevo',
               params: { qr: code },
@@ -129,7 +128,6 @@ export default function EscanearScreen() {
       }
     } finally {
       setProcessing(false);
-      // Cooldown de 2 segundos para evitar re-escaneo accidental
       setTimeout(() => {
         cooldownRef.current = false;
       }, 2000);
@@ -152,9 +150,7 @@ export default function EscanearScreen() {
   };
 
   return (
-    <View className="flex-1 bg-slate-950">
-      <StatusBar barStyle="light-content" />
-
+    <View style={styles.container}>
       {/* Vista de Cámara o Solicitud de Permisos */}
       {permission?.granted ? (
         <CameraView
@@ -167,86 +163,92 @@ export default function EscanearScreen() {
           onBarcodeScanned={cooldownRef.current ? undefined : handleBarCodeScanned}
         />
       ) : (
-        <View className="flex-1 items-center justify-center p-6 bg-slate-900">
-          <Camera size={52} color="#94A3B8" />
-          <Text className="text-white text-lg font-bold mt-4 text-center">
-            Permiso de Cámara
-          </Text>
-          <Text className="text-slate-400 text-xs text-center mt-2 mb-5">
+        <View style={styles.permissionBox}>
+          <Camera size={52} color={MARCONA_COLORS.slate400} />
+          <Text style={styles.permissionTitle}>Permiso de Cámara</Text>
+          <Text style={styles.permissionText}>
             Se requiere acceso a la cámara para escanear etiquetas QR y códigos de barras de los bienes.
           </Text>
           <TouchableOpacity
-            className="bg-red-700 px-6 py-3 rounded-xl active:opacity-90"
+            style={styles.permissionBtn}
             onPress={requestPermission}
+            activeOpacity={0.85}
           >
-            <Text className="text-white font-bold text-sm">Habilitar Cámara</Text>
+            <Text style={styles.permissionBtnText}>Habilitar Cámara</Text>
           </TouchableOpacity>
         </View>
       )}
 
       {/* Controles Flotantes Superiores */}
-      <SafeAreaView className="z-10">
-        <View className="px-5 pt-3 pb-2 flex-row items-center justify-between">
+      <SafeAreaView style={styles.topOverlay} edges={['top']}>
+        <View style={styles.topBar}>
           {/* Botón Salir / Reset */}
           <TouchableOpacity
-            className="w-10 h-10 rounded-full bg-slate-900/80 items-center justify-center border border-slate-700"
+            style={styles.circleBtn}
             onPress={() => router.push('/(tabs)')}
+            activeOpacity={0.8}
           >
-            <X size={20} color="#FFFFFF" />
+            <X size={20} color={MARCONA_COLORS.white} />
           </TouchableOpacity>
 
           {/* Pill Central con Nombre de Campaña */}
-          <View className="bg-slate-900/90 px-4 py-1.5 rounded-full border border-slate-700">
-            <Text className="text-white text-xs font-bold">
+          <View style={styles.campanaPill}>
+            <Text style={styles.campanaPillText}>
               {campana?.nombre || 'Inventario 2026'}
             </Text>
           </View>
 
           {/* Botón Linterna */}
           <TouchableOpacity
-            className={`w-10 h-10 rounded-full items-center justify-center border ${
-              torch
-                ? 'bg-amber-500 border-amber-300'
-                : 'bg-slate-900/80 border-slate-700'
-            }`}
+            style={[
+              styles.circleBtn,
+              torch && { backgroundColor: MARCONA_COLORS.gold, borderColor: '#FDE68A' },
+            ]}
             onPress={() => setTorch(!torch)}
+            activeOpacity={0.8}
           >
             {torch ? (
-              <ZapOff size={18} color="#FFFFFF" />
+              <ZapOff size={18} color={MARCONA_COLORS.white} />
             ) : (
-              <Zap size={18} color="#FFFFFF" />
+              <Zap size={18} color={MARCONA_COLORS.white} />
             )}
           </TouchableOpacity>
         </View>
 
         {/* Toggle Segmentado: Consulta / Registro vs Inventario Rápido */}
-        <View className="px-5 mt-2">
-          <View className="bg-slate-900/90 p-1 rounded-full flex-row border border-slate-800">
+        <View style={styles.toggleRow}>
+          <View style={styles.toggleContainer}>
             <TouchableOpacity
-              className={`flex-1 py-2 rounded-full items-center ${
-                mode === 'consulta' ? 'bg-red-700 shadow-sm' : ''
-              }`}
+              style={[
+                styles.toggleBtn,
+                mode === 'consulta' && styles.toggleBtnActive,
+              ]}
               onPress={() => setMode('consulta')}
+              activeOpacity={0.9}
             >
               <Text
-                className={`text-xs font-bold ${
-                  mode === 'consulta' ? 'text-white' : 'text-slate-400'
-                }`}
+                style={[
+                  styles.toggleBtnText,
+                  mode === 'consulta' && styles.toggleBtnTextActive,
+                ]}
               >
                 Consulta / Registro
               </Text>
             </TouchableOpacity>
 
             <TouchableOpacity
-              className={`flex-1 py-2 rounded-full items-center ${
-                mode === 'rapido' ? 'bg-red-700 shadow-sm' : ''
-              }`}
+              style={[
+                styles.toggleBtn,
+                mode === 'rapido' && styles.toggleBtnActive,
+              ]}
               onPress={() => setMode('rapido')}
+              activeOpacity={0.9}
             >
               <Text
-                className={`text-xs font-bold ${
-                  mode === 'rapido' ? 'text-white' : 'text-slate-400'
-                }`}
+                style={[
+                  styles.toggleBtnText,
+                  mode === 'rapido' && styles.toggleBtnTextActive,
+                ]}
               >
                 Inventario Rápido
               </Text>
@@ -257,59 +259,56 @@ export default function EscanearScreen() {
 
       {/* Banner de Verificación Exitosa en Modo Rápido */}
       {successBanner && (
-        <View className="absolute top-36 left-5 right-5 z-20 bg-green-700 px-4 py-3 rounded-2xl flex-row items-center justify-center shadow-lg">
-          <CheckCircle2 size={18} color="#FFFFFF" />
-          <Text className="text-white font-bold text-xs ml-2">
-            {successBanner}
-          </Text>
+        <View style={styles.successBanner}>
+          <CheckCircle2 size={18} color={MARCONA_COLORS.white} />
+          <Text style={styles.successBannerText}>{successBanner}</Text>
         </View>
       )}
 
       {/* Visor Central */}
-      <View className="flex-1 items-center justify-center -mt-10">
+      <View style={styles.centerContainer} pointerEvents="box-none">
         <View style={styles.viewfinder}>
           {/* Esquinas Estilizadas Dorado y Blanco */}
-          <View style={[styles.corner, styles.cornerTL, { borderColor: '#D97706' }]} />
-          <View style={[styles.corner, styles.cornerTR, { borderColor: '#FFFFFF' }]} />
-          <View style={[styles.corner, styles.cornerBL, { borderColor: '#FFFFFF' }]} />
-          <View style={[styles.corner, styles.cornerBR, { borderColor: '#D97706' }]} />
+          <View style={[styles.corner, styles.cornerTL, { borderColor: MARCONA_COLORS.gold }]} />
+          <View style={[styles.corner, styles.cornerTR, { borderColor: MARCONA_COLORS.white }]} />
+          <View style={[styles.corner, styles.cornerBL, { borderColor: MARCONA_COLORS.white }]} />
+          <View style={[styles.corner, styles.cornerBR, { borderColor: MARCONA_COLORS.gold }]} />
 
           {/* Línea Central Dorada */}
           <View style={styles.scanLine} />
         </View>
 
         {/* Chip con Código Detectado */}
-        <View className="bg-slate-950/80 border border-amber-600/80 px-4 py-1.5 rounded-full mt-6 shadow-sm">
-          <Text className="font-mono text-xs font-bold text-amber-500">
+        <View style={styles.codeChip}>
+          <Text style={styles.codeChipText}>
             {processing ? 'Consultando...' : lastScannedCode}
           </Text>
         </View>
 
         {/* Botón Ingresar Código Manual */}
         <TouchableOpacity
-          className="bg-slate-900/80 border border-slate-700 px-4 py-2.5 rounded-full flex-row items-center mt-3 active:opacity-90 shadow-sm"
+          style={styles.manualBtn}
           onPress={() => setManualModalVisible(true)}
+          activeOpacity={0.85}
         >
-          <Keyboard size={15} color="#CBD5E1" />
-          <Text className="text-slate-200 text-xs font-bold ml-2">
-            Ingresar código manual
-          </Text>
+          <Keyboard size={15} color={MARCONA_COLORS.slate300} />
+          <Text style={styles.manualBtnText}>Ingresar código manual</Text>
         </TouchableOpacity>
       </View>
 
       {/* Tarjeta Inferior Estilo Bottom Sheet */}
-      <View className="bg-white rounded-t-3xl p-5 shadow-2xl">
-        <View className="w-10 h-1 bg-slate-200 rounded-full self-center mb-4" />
+      <View style={styles.bottomSheet}>
+        <View style={styles.sheetHandle} />
 
-        <View className="flex-row items-center">
-          <View className="w-12 h-12 rounded-2xl bg-red-100 items-center justify-center mr-3.5">
-            <QrCode size={24} color="#B91C1C" />
+        <View style={styles.sheetContent}>
+          <View style={styles.sheetIconBox}>
+            <QrCode size={24} color={MARCONA_COLORS.red} />
           </View>
-          <View className="flex-1">
-            <Text className="text-sm font-extrabold text-slate-900">
+          <View style={styles.sheetTextBox}>
+            <Text style={styles.sheetTitle}>
               Modo: {mode === 'consulta' ? 'Consulta / Registro' : 'Inventario Rápido'}
             </Text>
-            <Text className="text-xs text-slate-500 mt-0.5">
+            <Text style={styles.sheetSubtitle}>
               Apunta al código QR o código de barras del bien municipal
             </Text>
           </View>
@@ -323,37 +322,36 @@ export default function EscanearScreen() {
         animationType="fade"
         onRequestClose={() => setManualModalVisible(false)}
       >
-        <View className="flex-1 bg-black/60 items-center justify-center px-6">
-          <View className="bg-white rounded-3xl p-6 w-full max-w-sm shadow-xl">
-            <Text className="text-base font-bold text-slate-800 mb-1">
-              Ingreso Manual de Código
-            </Text>
-            <Text className="text-xs text-slate-500 mb-4">
-              Escribe el código QR (ej: MARCONA-EQ-001) para buscar o inventariar.
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalCard}>
+            <Text style={styles.modalTitle}>Ingreso Manual de Código</Text>
+            <Text style={styles.modalSubtitle}>
+              Escribe el código QR (ej: MDM-00142) para buscar o inventariar.
             </Text>
 
             <TextInput
-              className="bg-slate-100 border border-slate-300 rounded-xl px-3 py-3 text-slate-800 font-mono text-sm mb-5"
-              placeholder="MARCONA-EQ-001"
+              style={styles.modalInput}
+              placeholder="MDM-00142"
+              placeholderTextColor={MARCONA_COLORS.slate400}
               value={manualCode}
               onChangeText={setManualCode}
               autoCapitalize="characters"
               autoFocus
             />
 
-            <View className="flex-row gap-2.5">
+            <View style={styles.modalActions}>
               <TouchableOpacity
-                className="flex-1 py-3 bg-slate-100 rounded-xl items-center"
+                style={styles.modalCancelBtn}
                 onPress={() => setManualModalVisible(false)}
               >
-                <Text className="text-slate-600 font-bold text-sm">Cancelar</Text>
+                <Text style={styles.modalCancelText}>Cancelar</Text>
               </TouchableOpacity>
 
               <TouchableOpacity
-                className="flex-1 py-3 bg-red-700 rounded-xl items-center"
+                style={styles.modalSubmitBtn}
                 onPress={handleManualSubmit}
               >
-                <Text className="text-white font-bold text-sm">Procesar</Text>
+                <Text style={styles.modalSubmitText}>Procesar</Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -364,6 +362,144 @@ export default function EscanearScreen() {
 }
 
 const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: MARCONA_COLORS.slate950,
+  },
+  permissionBox: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 24,
+    backgroundColor: MARCONA_COLORS.slate900,
+  },
+  permissionTitle: {
+    color: MARCONA_COLORS.white,
+    fontSize: 18,
+    fontWeight: '700',
+    marginTop: 16,
+    textAlign: 'center',
+  },
+  permissionText: {
+    color: MARCONA_COLORS.slate400,
+    fontSize: 12,
+    textAlign: 'center',
+    marginTop: 8,
+    marginBottom: 20,
+    maxWidth: 280,
+  },
+  permissionBtn: {
+    backgroundColor: MARCONA_COLORS.red,
+    paddingHorizontal: 24,
+    paddingVertical: 12,
+    borderRadius: 12,
+  },
+  permissionBtnText: {
+    color: MARCONA_COLORS.white,
+    fontSize: 14,
+    fontWeight: '700',
+  },
+  topOverlay: {
+    zIndex: 10,
+  },
+  topBar: {
+    paddingHorizontal: 16,
+    paddingTop: 10,
+    paddingBottom: 8,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  circleBtn: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: 'rgba(15, 23, 42, 0.85)',
+    borderWidth: 1,
+    borderColor: MARCONA_COLORS.slate700,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  campanaPill: {
+    backgroundColor: 'rgba(15, 23, 42, 0.9)',
+    paddingHorizontal: 16,
+    paddingVertical: 6,
+    borderRadius: 999,
+    borderWidth: 1,
+    borderColor: MARCONA_COLORS.slate700,
+  },
+  campanaPillText: {
+    color: MARCONA_COLORS.white,
+    fontSize: 12,
+    fontWeight: '700',
+  },
+  toggleRow: {
+    paddingHorizontal: 20,
+    marginTop: 6,
+  },
+  toggleContainer: {
+    backgroundColor: 'rgba(15, 23, 42, 0.92)',
+    padding: 4,
+    borderRadius: 999,
+    flexDirection: 'row',
+    borderWidth: 1,
+    borderColor: MARCONA_COLORS.slate800,
+  },
+  toggleBtn: {
+    flex: 1,
+    paddingVertical: 8,
+    borderRadius: 999,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  toggleBtnActive: {
+    backgroundColor: MARCONA_COLORS.red,
+  },
+  toggleBtnText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: MARCONA_COLORS.slate400,
+  },
+  toggleBtnTextActive: {
+    color: MARCONA_COLORS.white,
+  },
+  successBanner: {
+    position: 'absolute',
+    top: 140,
+    left: 20,
+    right: 20,
+    zIndex: 25,
+    backgroundColor: MARCONA_COLORS.green,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderRadius: 14,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    ...Platform.select({
+      ios: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.3,
+        shadowRadius: 6,
+      },
+      android: {
+        elevation: 6,
+      },
+    }),
+  },
+  successBannerText: {
+    color: MARCONA_COLORS.white,
+    fontSize: 13,
+    fontWeight: '700',
+    marginLeft: 8,
+  },
+  centerContainer: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: -20,
+  },
   viewfinder: {
     width: 240,
     height: 240,
@@ -407,10 +543,175 @@ const styles = StyleSheet.create({
   scanLine: {
     width: '85%',
     height: 2,
-    backgroundColor: '#D97706',
-    shadowColor: '#D97706',
-    shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.8,
-    shadowRadius: 6,
+    backgroundColor: MARCONA_COLORS.gold,
+    ...Platform.select({
+      ios: {
+        shadowColor: MARCONA_COLORS.gold,
+        shadowOffset: { width: 0, height: 0 },
+        shadowOpacity: 0.8,
+        shadowRadius: 6,
+      },
+    }),
+  },
+  codeChip: {
+    backgroundColor: 'rgba(2, 6, 23, 0.85)',
+    borderWidth: 1,
+    borderColor: 'rgba(217, 119, 6, 0.8)',
+    paddingHorizontal: 16,
+    paddingVertical: 6,
+    borderRadius: 999,
+    marginTop: 22,
+  },
+  codeChipText: {
+    fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace',
+    fontSize: 12,
+    fontWeight: '700',
+    color: MARCONA_COLORS.gold,
+  },
+  manualBtn: {
+    backgroundColor: 'rgba(15, 23, 42, 0.85)',
+    borderWidth: 1,
+    borderColor: MARCONA_COLORS.slate700,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: 999,
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 12,
+  },
+  manualBtnText: {
+    color: MARCONA_COLORS.slate200,
+    fontSize: 12,
+    fontWeight: '700',
+    marginLeft: 8,
+  },
+  bottomSheet: {
+    backgroundColor: MARCONA_COLORS.white,
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    paddingHorizontal: 20,
+    paddingTop: 12,
+    paddingBottom: Platform.OS === 'ios' ? 24 : 16,
+    ...Platform.select({
+      ios: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: -4 },
+        shadowOpacity: 0.1,
+        shadowRadius: 8,
+      },
+      android: {
+        elevation: 8,
+      },
+    }),
+  },
+  sheetHandle: {
+    width: 36,
+    height: 4,
+    backgroundColor: MARCONA_COLORS.slate300,
+    borderRadius: 2,
+    alignSelf: 'center',
+    marginBottom: 12,
+  },
+  sheetContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  sheetIconBox: {
+    width: 48,
+    height: 48,
+    borderRadius: 16,
+    backgroundColor: '#FEE2E2',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 14,
+  },
+  sheetTextBox: {
+    flex: 1,
+  },
+  sheetTitle: {
+    fontSize: 14,
+    fontWeight: '800',
+    color: MARCONA_COLORS.slate900,
+  },
+  sheetSubtitle: {
+    fontSize: 12,
+    color: MARCONA_COLORS.slate500,
+    marginTop: 2,
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.65)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 20,
+  },
+  modalCard: {
+    backgroundColor: MARCONA_COLORS.white,
+    borderRadius: 20,
+    padding: 20,
+    width: '100%',
+    maxWidth: 360,
+    ...Platform.select({
+      ios: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.15,
+        shadowRadius: 10,
+      },
+      android: {
+        elevation: 6,
+      },
+    }),
+  },
+  modalTitle: {
+    fontSize: 16,
+    fontWeight: '800',
+    color: MARCONA_COLORS.slate900,
+    marginBottom: 4,
+  },
+  modalSubtitle: {
+    fontSize: 12,
+    color: MARCONA_COLORS.slate500,
+    marginBottom: 16,
+  },
+  modalInput: {
+    backgroundColor: MARCONA_COLORS.slate100,
+    borderWidth: 1,
+    borderColor: MARCONA_COLORS.slate300,
+    borderRadius: 12,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace',
+    fontSize: 14,
+    color: MARCONA_COLORS.slate900,
+    marginBottom: 16,
+  },
+  modalActions: {
+    flexDirection: 'row',
+    gap: 10,
+  },
+  modalCancelBtn: {
+    flex: 1,
+    paddingVertical: 12,
+    backgroundColor: MARCONA_COLORS.slate100,
+    borderRadius: 12,
+    alignItems: 'center',
+  },
+  modalCancelText: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: MARCONA_COLORS.slate600,
+  },
+  modalSubmitBtn: {
+    flex: 1,
+    paddingVertical: 12,
+    backgroundColor: MARCONA_COLORS.red,
+    borderRadius: 12,
+    alignItems: 'center',
+  },
+  modalSubmitText: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: MARCONA_COLORS.white,
   },
 });

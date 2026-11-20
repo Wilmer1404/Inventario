@@ -8,9 +8,10 @@ import {
   Modal,
   TextInput,
   ActivityIndicator,
-  SafeAreaView,
-  StatusBar,
+  StyleSheet,
+  Platform,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import {
   ArrowLeft,
@@ -20,13 +21,11 @@ import {
   Edit2,
   Save,
   Search,
-  CheckCircle2,
-  User,
-  Building,
 } from 'lucide-react-native';
 import apiClient from '../../src/services/apiClient';
 import { BienThumbnail } from '../../src/components/BienThumbnail';
 import { Bien, Trabajador } from '../../src/types';
+import { MARCONA_COLORS } from '../../src/theme/styles';
 
 interface SessionBienItem {
   id: number;
@@ -64,7 +63,6 @@ export default function VincularScreen() {
           const first = res.data.data[0];
           setTrabajador(first);
 
-          // Cargar bienes iniciales si existen
           apiClient
             .get(`/kits/trabajador/${first.id}`)
             .then((kitRes) => {
@@ -107,7 +105,6 @@ export default function VincularScreen() {
     setTrabajador(w);
     setWorkerModalVisible(false);
 
-    // Cargar bienes asignados al nuevo trabajador seleccionado
     try {
       const res = await apiClient.get(`/kits/trabajador/${w.id}`);
       if (res.data.success && res.data.data.bienes) {
@@ -120,21 +117,23 @@ export default function VincularScreen() {
             foto_url: b.foto_url,
           }))
         );
+      } else {
+        setBienesSession([]);
       }
     } catch {
-      // Ignorar si no tiene bienes
+      setBienesSession([]);
     }
   };
 
   const handleAddBienByQr = async () => {
-    const code = qrInput.trim();
-    if (!code) {
+    if (!qrInput.trim()) {
       Alert.alert('Atención', 'Ingrese el código QR del bien.');
       return;
     }
 
-    if (bienesSession.some((b) => b.codigo_qr.toUpperCase() === code.toUpperCase())) {
-      Alert.alert('Atención', 'Este bien ya se encuentra en la lista de vinculación.');
+    const code = qrInput.trim();
+    if (bienesSession.some((item) => item.codigo_qr.toUpperCase() === code.toUpperCase())) {
+      Alert.alert('Aviso', 'Este bien ya se encuentra en la lista actual.');
       return;
     }
 
@@ -142,32 +141,49 @@ export default function VincularScreen() {
       setLoadingAdd(true);
       const res = await apiClient.get(`/bienes/qr/${encodeURIComponent(code)}`);
       if (res.data.success) {
-        const bien: Bien = res.data.data;
+        const b = res.data.data;
         setBienesSession((prev) => [
           ...prev,
           {
-            id: bien.id,
-            codigo_qr: bien.codigo_qr,
-            nombre: bien.nombre,
-            categoria: bien.categoria,
-            foto_url: bien.foto_url,
+            id: b.id,
+            codigo_qr: b.codigo_qr,
+            nombre: b.nombre,
+            categoria: b.categoria,
+            foto_url: b.foto_url,
           },
         ]);
         setQrInput('');
         setAddModalVisible(false);
       }
-    } catch (err: any) {
-      Alert.alert(
-        'No encontrado',
-        err.response?.data?.message || `No se encontró el bien con código ${code}`
-      );
+    } catch (e: any) {
+      if (e.response?.status === 404) {
+        Alert.alert(
+          'Bien no encontrado',
+          `No se encontró ningún bien registrado con el código ${code}.`,
+          [
+            { text: 'Cancelar', style: 'cancel' },
+            {
+              text: 'Registrar Nuevo',
+              onPress: () => {
+                setAddModalVisible(false);
+                router.push({
+                  pathname: '/bien/nuevo',
+                  params: { qr: code },
+                });
+              },
+            },
+          ]
+        );
+      } else {
+        Alert.alert('Error', 'Fallo al buscar el bien.');
+      }
     } finally {
       setLoadingAdd(false);
     }
   };
 
   const handleRemoveBien = (id: number) => {
-    setBienesSession((prev) => prev.filter((b) => b.id !== id));
+    setBienesSession((prev) => prev.filter((item) => item.id !== id));
   };
 
   const handleGuardarVinculacion = async () => {
@@ -177,7 +193,7 @@ export default function VincularScreen() {
     }
 
     if (bienesSession.length === 0) {
-      Alert.alert('Atención', 'Agregue al menos un bien para vincular al trabajador.');
+      Alert.alert('Atención', 'Agregue al menos un bien a la sesión antes de guardar.');
       return;
     }
 
@@ -185,14 +201,15 @@ export default function VincularScreen() {
       setSaving(true);
       const res = await apiClient.post('/kits/vincular', {
         trabajador_id: trabajador.id,
+        oficina_id: trabajador.oficina_id,
         bienes_ids: bienesSession.map((b) => b.id),
-        motivo: `Vinculación de Kit para ${trabajador.nombre_completo}`,
+        motivo: 'Vinculación de kit patrimonial desde aplicación móvil',
       });
 
       if (res.data.success) {
         Alert.alert(
-          '¡Vinculación Guardada!',
-          `Se asignaron exitosamente ${res.data.data.total_vinculados} bienes a ${trabajador.nombre_completo}.`
+          '¡Vinculación Exitosa!',
+          `Se vincularon ${bienesSession.length} bienes al funcionario ${trabajador.nombre_completo}.`
         );
       }
     } catch (e: any) {
@@ -202,7 +219,6 @@ export default function VincularScreen() {
     }
   };
 
-  // Iniciales del trabajador para el avatar
   const getInitials = (name?: string) => {
     if (!name) return 'TM';
     const parts = name.trim().split(' ');
@@ -213,73 +229,75 @@ export default function VincularScreen() {
   };
 
   return (
-    <SafeAreaView className="flex-1 bg-slate-50">
-      <StatusBar barStyle="dark-content" />
-
+    <SafeAreaView style={styles.safeArea} edges={['top']}>
       {/* Header Superior */}
-      <View className="bg-white border-b border-slate-200 px-4 py-3 flex-row items-center shadow-2xs">
+      <View style={styles.header}>
         <TouchableOpacity
-          className="w-10 h-10 rounded-full bg-slate-100 items-center justify-center border border-slate-200 mr-3"
+          style={styles.circleBtn}
           onPress={() => router.push('/(tabs)')}
+          activeOpacity={0.7}
         >
-          <ArrowLeft size={20} color="#334155" />
+          <ArrowLeft size={20} color={MARCONA_COLORS.slate700} />
         </TouchableOpacity>
 
-        <Text className="text-base font-extrabold text-slate-900">
-          Vincular Bienes a Responsable
-        </Text>
+        <Text style={styles.headerTitle}>Vincular Bienes a Responsable</Text>
       </View>
 
-      <ScrollView className="flex-1 px-4 py-4" showsVerticalScrollIndicator={false}>
+      <ScrollView
+        style={styles.container}
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
+      >
         {/* Bloque Trabajador Municipal Asignado */}
-        <Text className="text-xs font-bold text-slate-500 uppercase tracking-wide mb-2 px-1">
-          Trabajador Municipal Asignado
-        </Text>
+        <Text style={styles.sectionLabel}>Trabajador Municipal Asignado</Text>
 
-        <View className="bg-white rounded-2xl border border-slate-200 p-4 shadow-sm flex-row items-center justify-between mb-4">
-          <View className="flex-row items-center flex-1 pr-3">
-            <View className="w-12 h-12 rounded-full bg-blue-900 items-center justify-center mr-3">
-              <Text className="text-white font-extrabold text-base">
+        <View style={styles.workerCard}>
+          <View style={styles.workerInfo}>
+            <View style={styles.avatar}>
+              <Text style={styles.avatarText}>
                 {getInitials(trabajador?.nombre_completo)}
               </Text>
             </View>
 
-            <View className="flex-1">
-              <Text className="text-sm font-extrabold text-slate-900 leading-tight" numberOfLines={1}>
+            <View style={styles.workerTexts}>
+              <Text style={styles.workerName} numberOfLines={1}>
                 {trabajador?.nombre_completo || 'Seleccionar Trabajador'}
               </Text>
-              <Text className="text-xs text-slate-500 mt-0.5" numberOfLines={1}>
+              <Text style={styles.workerRole} numberOfLines={1}>
                 {trabajador?.cargo || 'Cargo'} · {trabajador?.oficina?.sigla || 'Oficina'}
               </Text>
             </View>
           </View>
 
           <TouchableOpacity
-            className="w-9 h-9 rounded-full bg-slate-100 items-center justify-center border border-slate-200 active:opacity-80"
+            style={styles.changeWorkerBtn}
             onPress={openWorkerSelector}
+            activeOpacity={0.8}
           >
-            <ArrowLeftRight size={16} color="#1E3A8A" />
+            <ArrowLeftRight size={16} color={MARCONA_COLORS.blue} />
           </TouchableOpacity>
         </View>
 
         {/* Botón Escanear QR para agregar al kit */}
         <TouchableOpacity
-          className="border-dashed border-2 border-red-700 bg-red-50/80 py-3.5 px-4 rounded-2xl items-center flex-row justify-center mb-5 active:opacity-90"
+          style={styles.dashedAddBtn}
           onPress={() => setAddModalVisible(true)}
+          activeOpacity={0.85}
         >
-          <Camera size={18} color="#B91C1C" />
-          <Text className="text-red-700 font-bold text-sm ml-2">
+          <Camera size={18} color={MARCONA_COLORS.red} />
+          <Text style={styles.dashedAddBtnText}>
             + Escanear QR para agregar bien al kit
           </Text>
         </TouchableOpacity>
 
         {/* Encabezado Lista de Bienes */}
-        <View className="flex-row items-center justify-between mb-3 px-1">
-          <Text className="text-sm font-extrabold text-slate-800">
+        <View style={styles.sessionHeaderRow}>
+          <Text style={styles.sessionTitle}>
             Bienes en esta sesión ({bienesSession.length})
           </Text>
-          <View className="bg-blue-100/80 px-2.5 py-0.5 rounded-md">
-            <Text className="text-[11px] font-bold text-blue-900">
+
+          <View style={styles.officeTag}>
+            <Text style={styles.officeTagText}>
               Kit {trabajador?.oficina?.sigla ? `[${trabajador.oficina.sigla}]` : 'Municipal'}
             </Text>
           </View>
@@ -287,48 +305,43 @@ export default function VincularScreen() {
 
         {/* Lista de Bienes Acumulados */}
         {bienesSession.length === 0 ? (
-          <View className="bg-white rounded-2xl border border-slate-200 p-8 items-center mb-6">
-            <Text className="text-xs text-slate-400 font-semibold text-center">
+          <View style={styles.emptyCard}>
+            <Text style={styles.emptyText}>
               No hay bienes agregados para vincular.{'\n'}
               Toca el botón superior para escanear o escribir un código QR.
             </Text>
           </View>
         ) : (
-          <View className="gap-2.5 mb-6">
+          <View style={styles.sessionList}>
             {bienesSession.map((item) => (
-              <View
-                key={item.id}
-                className="bg-white rounded-2xl border border-slate-200 p-3.5 flex-row items-center shadow-2xs"
-              >
+              <View key={item.id} style={styles.bienItemCard}>
                 <BienThumbnail
                   fotoUrl={item.foto_url}
                   categoria={item.categoria}
                   size={44}
                 />
 
-                <View className="flex-1 ml-3 mr-2">
-                  <Text className="text-sm font-bold text-slate-800 leading-snug" numberOfLines={1}>
+                <View style={styles.bienItemTexts}>
+                  <Text style={styles.bienItemName} numberOfLines={1}>
                     {item.nombre}
                   </Text>
-                  <Text className="font-mono text-xs text-blue-900 font-bold mt-0.5">
-                    {item.codigo_qr}
-                  </Text>
+                  <Text style={styles.bienItemQr}>{item.codigo_qr}</Text>
                 </View>
 
                 {/* Acciones */}
-                <View className="flex-row items-center gap-2">
+                <View style={styles.actionsRow}>
                   <TouchableOpacity
-                    className="p-1.5"
+                    style={styles.actionIconBtn}
                     onPress={() => router.push(`/bien/${encodeURIComponent(item.codigo_qr)}`)}
                   >
-                    <Edit2 size={16} color="#64748B" />
+                    <Edit2 size={16} color={MARCONA_COLORS.slate500} />
                   </TouchableOpacity>
 
                   <TouchableOpacity
-                    className="p-1.5"
+                    style={styles.actionIconBtn}
                     onPress={() => handleRemoveBien(item.id)}
                   >
-                    <Trash2 size={16} color="#EF4444" />
+                    <Trash2 size={16} color={MARCONA_COLORS.red} />
                   </TouchableOpacity>
                 </View>
               </View>
@@ -338,18 +351,19 @@ export default function VincularScreen() {
       </ScrollView>
 
       {/* Botón Inferior Fijo de Guardar Vinculación */}
-      <View className="bg-white border-t border-slate-200 p-4 shadow-lg">
+      <View style={styles.bottomBar}>
         <TouchableOpacity
-          className="bg-red-700 py-3.5 rounded-xl flex-row items-center justify-center shadow-md active:opacity-90"
+          style={styles.saveBtn}
           onPress={handleGuardarVinculacion}
           disabled={saving}
+          activeOpacity={0.88}
         >
           {saving ? (
-            <ActivityIndicator color="#FFFFFF" />
+            <ActivityIndicator color={MARCONA_COLORS.white} />
           ) : (
             <>
-              <Save size={18} color="#FFFFFF" />
-              <Text className="text-white font-extrabold text-base ml-2">
+              <Save size={18} color={MARCONA_COLORS.white} />
+              <Text style={styles.saveBtnText}>
                 Guardar Vinculación ({bienesSession.length} bienes)
               </Text>
             </>
@@ -364,23 +378,22 @@ export default function VincularScreen() {
         animationType="slide"
         onRequestClose={() => setWorkerModalVisible(false)}
       >
-        <SafeAreaView className="flex-1 bg-black/60 justify-end">
-          <View className="bg-white rounded-t-3xl max-h-[80%] p-5 shadow-2xl">
-            <View className="flex-row items-center justify-between mb-3">
-              <Text className="text-base font-extrabold text-slate-900">
-                Seleccionar Responsable
-              </Text>
+        <SafeAreaView style={styles.modalBackdrop}>
+          <View style={styles.workerModalSheet}>
+            <View style={styles.workerModalHeader}>
+              <Text style={styles.workerModalTitle}>Seleccionar Responsable</Text>
               <TouchableOpacity onPress={() => setWorkerModalVisible(false)}>
-                <Text className="text-sm font-bold text-red-700">Cerrar</Text>
+                <Text style={styles.workerModalClose}>Cerrar</Text>
               </TouchableOpacity>
             </View>
 
             {/* Buscador de trabajadores */}
-            <View className="flex-row items-center bg-slate-100 rounded-xl px-3 py-2.5 mb-3 border border-slate-200">
-              <Search size={16} color="#64748B" />
+            <View style={styles.searchBar}>
+              <Search size={16} color={MARCONA_COLORS.slate500} />
               <TextInput
-                className="flex-1 ml-2 text-sm text-slate-800"
+                style={styles.searchInput}
                 placeholder="Buscar por nombre o DNI..."
+                placeholderTextColor={MARCONA_COLORS.slate400}
                 value={workerSearch}
                 onChangeText={setWorkerSearch}
                 onSubmitEditing={openWorkerSelector}
@@ -388,26 +401,23 @@ export default function VincularScreen() {
             </View>
 
             {loadingWorkers ? (
-              <ActivityIndicator color="#B91C1C" className="my-6" />
+              <ActivityIndicator color={MARCONA_COLORS.red} style={{ marginVertical: 24 }} />
             ) : (
-              <ScrollView className="max-h-80">
+              <ScrollView style={styles.workersList} showsVerticalScrollIndicator={false}>
                 {workersList.map((w) => (
                   <TouchableOpacity
                     key={w.id}
-                    className="py-3 px-3 border-b border-slate-100 flex-row items-center justify-between active:bg-slate-50 rounded-xl"
+                    style={styles.workerListItem}
                     onPress={() => handleSelectWorker(w)}
+                    activeOpacity={0.7}
                   >
-                    <View className="flex-1">
-                      <Text className="text-sm font-bold text-slate-800">
-                        {w.nombre_completo}
-                      </Text>
-                      <Text className="text-xs text-slate-500">
+                    <View style={styles.workerListDetails}>
+                      <Text style={styles.workerListName}>{w.nombre_completo}</Text>
+                      <Text style={styles.workerListDni}>
                         DNI: {w.dni} · {w.cargo}
                       </Text>
                     </View>
-                    <Text className="text-xs font-semibold text-blue-900">
-                      {w.oficina?.sigla}
-                    </Text>
+                    <Text style={styles.workerListOffice}>{w.oficina?.sigla}</Text>
                   </TouchableOpacity>
                 ))}
               </ScrollView>
@@ -423,41 +433,40 @@ export default function VincularScreen() {
         animationType="fade"
         onRequestClose={() => setAddModalVisible(false)}
       >
-        <View className="flex-1 bg-black/60 items-center justify-center px-6">
-          <View className="bg-white rounded-3xl p-6 w-full max-w-sm shadow-xl">
-            <Text className="text-base font-extrabold text-slate-900 mb-1">
-              Agregar Bien al Kit
-            </Text>
-            <Text className="text-xs text-slate-500 mb-4">
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalCard}>
+            <Text style={styles.modalTitle}>Agregar Bien al Kit</Text>
+            <Text style={styles.modalSubtitle}>
               Escribe o escanea el código QR del bien municipal.
             </Text>
 
             <TextInput
-              className="bg-slate-100 border border-slate-300 rounded-xl px-3 py-3 text-slate-800 font-mono text-sm mb-5"
-              placeholder="Ej: MARCONA-EQ-001"
+              style={styles.modalInput}
+              placeholder="Ej: MDM-00142"
+              placeholderTextColor={MARCONA_COLORS.slate400}
               value={qrInput}
               onChangeText={setQrInput}
               autoCapitalize="characters"
               autoFocus
             />
 
-            <View className="flex-row gap-2.5">
+            <View style={styles.modalActions}>
               <TouchableOpacity
-                className="flex-1 py-3 bg-slate-100 rounded-xl items-center"
+                style={styles.modalCancelBtn}
                 onPress={() => setAddModalVisible(false)}
               >
-                <Text className="text-slate-600 font-bold text-sm">Cancelar</Text>
+                <Text style={styles.modalCancelText}>Cancelar</Text>
               </TouchableOpacity>
 
               <TouchableOpacity
-                className="flex-1 py-3 bg-red-700 rounded-xl items-center"
+                style={styles.modalSubmitBtn}
                 onPress={handleAddBienByQr}
                 disabled={loadingAdd}
               >
                 {loadingAdd ? (
-                  <ActivityIndicator color="#FFFFFF" />
+                  <ActivityIndicator color={MARCONA_COLORS.white} />
                 ) : (
-                  <Text className="text-white font-bold text-sm">Agregar</Text>
+                  <Text style={styles.modalSubmitText}>Agregar</Text>
                 )}
               </TouchableOpacity>
             </View>
@@ -467,3 +476,396 @@ export default function VincularScreen() {
     </SafeAreaView>
   );
 }
+
+const styles = StyleSheet.create({
+  safeArea: {
+    flex: 1,
+    backgroundColor: MARCONA_COLORS.slate50,
+  },
+  header: {
+    backgroundColor: MARCONA_COLORS.white,
+    borderBottomWidth: 1,
+    borderBottomColor: MARCONA_COLORS.slate200,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  circleBtn: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: MARCONA_COLORS.slate100,
+    borderWidth: 1,
+    borderColor: MARCONA_COLORS.slate200,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 12,
+  },
+  headerTitle: {
+    fontSize: 16,
+    fontWeight: '800',
+    color: MARCONA_COLORS.slate900,
+  },
+  container: {
+    flex: 1,
+  },
+  scrollContent: {
+    paddingHorizontal: 16,
+    paddingTop: 14,
+    paddingBottom: 24,
+  },
+  sectionLabel: {
+    fontSize: 11,
+    fontWeight: '800',
+    color: MARCONA_COLORS.slate500,
+    letterSpacing: 0.8,
+    textTransform: 'uppercase',
+    marginBottom: 8,
+    paddingHorizontal: 2,
+  },
+  workerCard: {
+    backgroundColor: MARCONA_COLORS.white,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: MARCONA_COLORS.slate200,
+    padding: 14,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 16,
+    ...Platform.select({
+      ios: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.04,
+        shadowRadius: 4,
+      },
+      android: {
+        elevation: 2,
+      },
+    }),
+  },
+  workerInfo: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+    paddingRight: 12,
+  },
+  avatar: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: MARCONA_COLORS.blue,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 12,
+  },
+  avatarText: {
+    color: MARCONA_COLORS.white,
+    fontWeight: '900',
+    fontSize: 16,
+  },
+  workerTexts: {
+    flex: 1,
+  },
+  workerName: {
+    fontSize: 14,
+    fontWeight: '800',
+    color: MARCONA_COLORS.slate900,
+  },
+  workerRole: {
+    fontSize: 12,
+    color: MARCONA_COLORS.slate500,
+    marginTop: 2,
+  },
+  changeWorkerBtn: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: MARCONA_COLORS.slate100,
+    borderWidth: 1,
+    borderColor: MARCONA_COLORS.slate200,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  dashedAddBtn: {
+    borderStyle: 'dashed',
+    borderWidth: 1.5,
+    borderColor: MARCONA_COLORS.red,
+    backgroundColor: '#FEF2F2',
+    paddingVertical: 14,
+    paddingHorizontal: 16,
+    borderRadius: 16,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 20,
+  },
+  dashedAddBtnText: {
+    color: MARCONA_COLORS.red,
+    fontWeight: '700',
+    fontSize: 14,
+    marginLeft: 8,
+  },
+  sessionHeaderRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 12,
+    paddingHorizontal: 2,
+  },
+  sessionTitle: {
+    fontSize: 14,
+    fontWeight: '800',
+    color: MARCONA_COLORS.slate800,
+  },
+  officeTag: {
+    backgroundColor: MARCONA_COLORS.blueLight,
+    paddingHorizontal: 10,
+    paddingVertical: 3,
+    borderRadius: 6,
+  },
+  officeTagText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: MARCONA_COLORS.blue,
+  },
+  emptyCard: {
+    backgroundColor: MARCONA_COLORS.white,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: MARCONA_COLORS.slate200,
+    padding: 32,
+    alignItems: 'center',
+    marginBottom: 20,
+  },
+  emptyText: {
+    fontSize: 12,
+    color: MARCONA_COLORS.slate400,
+    fontWeight: '600',
+    textAlign: 'center',
+    lineHeight: 18,
+  },
+  sessionList: {
+    gap: 10,
+    marginBottom: 20,
+  },
+  bienItemCard: {
+    backgroundColor: MARCONA_COLORS.white,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: MARCONA_COLORS.slate200,
+    padding: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+    ...Platform.select({
+      ios: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 1 },
+        shadowOpacity: 0.03,
+        shadowRadius: 3,
+      },
+      android: {
+        elevation: 1,
+      },
+    }),
+  },
+  bienItemTexts: {
+    flex: 1,
+    marginLeft: 12,
+    marginRight: 8,
+  },
+  bienItemName: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: MARCONA_COLORS.slate900,
+  },
+  bienItemQr: {
+    fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace',
+    fontSize: 11,
+    fontWeight: '700',
+    color: MARCONA_COLORS.blue,
+    marginTop: 2,
+  },
+  actionsRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  actionIconBtn: {
+    padding: 6,
+  },
+  bottomBar: {
+    backgroundColor: MARCONA_COLORS.white,
+    borderTopWidth: 1,
+    borderTopColor: MARCONA_COLORS.slate200,
+    padding: 16,
+    ...Platform.select({
+      ios: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: -3 },
+        shadowOpacity: 0.05,
+        shadowRadius: 5,
+      },
+      android: {
+        elevation: 6,
+      },
+    }),
+  },
+  saveBtn: {
+    backgroundColor: MARCONA_COLORS.red,
+    height: 50,
+    borderRadius: 14,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  saveBtnText: {
+    color: MARCONA_COLORS.white,
+    fontSize: 15,
+    fontWeight: '800',
+    marginLeft: 8,
+  },
+  modalBackdrop: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.65)',
+    justifyContent: 'flex-end',
+  },
+  workerModalSheet: {
+    backgroundColor: MARCONA_COLORS.white,
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    maxHeight: '80%',
+    padding: 20,
+  },
+  workerModalHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 14,
+  },
+  workerModalTitle: {
+    fontSize: 16,
+    fontWeight: '800',
+    color: MARCONA_COLORS.slate900,
+  },
+  workerModalClose: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: MARCONA_COLORS.red,
+  },
+  searchBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: MARCONA_COLORS.slate100,
+    borderRadius: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    marginBottom: 12,
+    borderWidth: 1,
+    borderColor: MARCONA_COLORS.slate200,
+  },
+  searchInput: {
+    flex: 1,
+    marginLeft: 8,
+    fontSize: 13,
+    color: MARCONA_COLORS.slate900,
+  },
+  workersList: {
+    maxHeight: 300,
+  },
+  workerListItem: {
+    paddingVertical: 12,
+    paddingHorizontal: 8,
+    borderBottomWidth: 1,
+    borderBottomColor: MARCONA_COLORS.slate100,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  workerListDetails: {
+    flex: 1,
+    paddingRight: 10,
+  },
+  workerListName: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: MARCONA_COLORS.slate800,
+  },
+  workerListDni: {
+    fontSize: 11,
+    color: MARCONA_COLORS.slate500,
+    marginTop: 2,
+  },
+  workerListOffice: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: MARCONA_COLORS.blue,
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.65)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 20,
+  },
+  modalCard: {
+    backgroundColor: MARCONA_COLORS.white,
+    borderRadius: 20,
+    padding: 20,
+    width: '100%',
+    maxWidth: 360,
+  },
+  modalTitle: {
+    fontSize: 16,
+    fontWeight: '800',
+    color: MARCONA_COLORS.slate900,
+    marginBottom: 4,
+  },
+  modalSubtitle: {
+    fontSize: 12,
+    color: MARCONA_COLORS.slate500,
+    marginBottom: 16,
+  },
+  modalInput: {
+    backgroundColor: MARCONA_COLORS.slate100,
+    borderWidth: 1,
+    borderColor: MARCONA_COLORS.slate300,
+    borderRadius: 12,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace',
+    fontSize: 14,
+    color: MARCONA_COLORS.slate900,
+    marginBottom: 16,
+  },
+  modalActions: {
+    flexDirection: 'row',
+    gap: 10,
+  },
+  modalCancelBtn: {
+    flex: 1,
+    paddingVertical: 12,
+    backgroundColor: MARCONA_COLORS.slate100,
+    borderRadius: 12,
+    alignItems: 'center',
+  },
+  modalCancelText: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: MARCONA_COLORS.slate600,
+  },
+  modalSubmitBtn: {
+    flex: 1,
+    paddingVertical: 12,
+    backgroundColor: MARCONA_COLORS.red,
+    borderRadius: 12,
+    alignItems: 'center',
+  },
+  modalSubmitText: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: MARCONA_COLORS.white,
+  },
+});

@@ -14,7 +14,7 @@ export default function TabsLayout() {
           backgroundColor: '#FFFFFF',
           borderTopColor: '#E2E8F0',
           borderTopWidth: 1,
-          height: Platform.OS === 'ios' ? 88 : 68,
+          height: Platform.OS === 'ios' ? 84 : 66,
           paddingBottom: Platform.OS === 'ios' ? 26 : 10,
           paddingTop: 8,
           elevation: 10,
@@ -51,7 +51,7 @@ export default function TabsLayout() {
           title: '',
           tabBarIcon: () => (
             <View style={styles.floatingButton}>
-              <QrCode color="#FFFFFF" size={28} />
+              <QrCode color="#FFFFFF" size={26} />
             </View>
           ),
           tabBarLabel: () => null,
@@ -79,13 +79,13 @@ export default function TabsLayout() {
 
 const styles = StyleSheet.create({
   floatingButton: {
-    width: 58,
-    height: 58,
-    borderRadius: 29,
+    width: 56,
+    height: 56,
+    borderRadius: 28,
     backgroundColor: '#B91C1C',
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: Platform.OS === 'ios' ? 14 : 20,
+    marginTop: Platform.OS === 'ios' ? -18 : -20,
     elevation: 8,
     shadowColor: '#B91C1C',
     shadowOffset: { width: 0, height: 4 },

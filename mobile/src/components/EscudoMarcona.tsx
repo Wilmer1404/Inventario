@@ -1,22 +1,26 @@
 import React, { useState } from 'react';
-import { View, Image } from 'react-native';
+import { View, Image, StyleSheet, ViewStyle, StyleProp } from 'react-native';
 import { Shield } from 'lucide-react-native';
+import { MARCONA_COLORS } from '../theme/styles';
 
 interface EscudoMarconaProps {
   size?: number;
-  className?: string;
+  style?: StyleProp<ViewStyle>;
 }
 
-export const EscudoMarcona: React.FC<EscudoMarconaProps> = ({ size = 64, className = '' }) => {
+export const EscudoMarcona: React.FC<EscudoMarconaProps> = ({ size = 64, style }) => {
   const [hasError, setHasError] = useState(false);
 
   if (hasError) {
     return (
       <View
-        style={{ width: size, height: size }}
-        className={`bg-red-700 rounded-2xl items-center justify-center shadow-md ${className}`}
+        style={[
+          styles.fallback,
+          { width: size, height: size, borderRadius: Math.round(size * 0.25) },
+          style,
+        ]}
       >
-        <Shield size={Math.round(size * 0.55)} color="#FFFFFF" />
+        <Shield size={Math.round(size * 0.55)} color={MARCONA_COLORS.white} />
       </View>
     );
   }
@@ -24,10 +28,20 @@ export const EscudoMarcona: React.FC<EscudoMarconaProps> = ({ size = 64, classNa
   return (
     <Image
       source={require('../../assets/images/escudo-marcona.png')}
-      style={{ width: size, height: size }}
-      className={`rounded-2xl ${className}`}
+      style={[
+        { width: size, height: size, borderRadius: Math.round(size * 0.25) },
+        style as any,
+      ]}
       resizeMode="contain"
       onError={() => setHasError(true)}
     />
   );
 };
+
+const styles = StyleSheet.create({
+  fallback: {
+    backgroundColor: MARCONA_COLORS.red,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+});

@@ -7,14 +7,16 @@ import {
   TouchableOpacity,
   Alert,
   ActivityIndicator,
-  SafeAreaView,
-  StatusBar,
   Modal,
+  StyleSheet,
+  Platform,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { ArrowLeft, QrCode, PlusCircle, Building, User, ChevronDown } from 'lucide-react-native';
 import apiClient from '../../src/services/apiClient';
 import { Oficina, Trabajador, EstadoConservacion } from '../../src/types';
+import { MARCONA_COLORS } from '../../src/theme/styles';
 
 export default function NuevoBienScreen() {
   const router = useRouter();
@@ -27,7 +29,7 @@ export default function NuevoBienScreen() {
   const [marca, setMarca] = useState('');
   const [modelo, setModelo] = useState('');
   const [numeroSerie, setNumeroSerie] = useState('');
-  const [estadoConservacion, setEstadoConservacion] = useState<EstadoConservacion>('BUENO');
+  const [estadoConservacion] = useState<EstadoConservacion>('BUENO');
 
   // Relaciones
   const [oficinas, setOficinas] = useState<Oficina[]>([]);
@@ -41,7 +43,6 @@ export default function NuevoBienScreen() {
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
-    // Cargar oficinas y trabajadores
     Promise.all([
       apiClient.get('/oficinas'),
       apiClient.get('/trabajadores'),
@@ -97,35 +98,35 @@ export default function NuevoBienScreen() {
   };
 
   return (
-    <SafeAreaView className="flex-1 bg-slate-50">
-      <StatusBar barStyle="dark-content" />
-
+    <SafeAreaView style={styles.safeArea} edges={['top']}>
       {/* Header */}
-      <View className="bg-white border-b border-slate-200 px-4 py-3 flex-row items-center shadow-2xs">
+      <View style={styles.header}>
         <TouchableOpacity
-          className="w-10 h-10 rounded-full bg-slate-100 items-center justify-center border border-slate-200 mr-3"
+          style={styles.circleBtn}
           onPress={() => router.back()}
+          activeOpacity={0.7}
         >
-          <ArrowLeft size={20} color="#334155" />
+          <ArrowLeft size={20} color={MARCONA_COLORS.slate700} />
         </TouchableOpacity>
 
-        <Text className="text-base font-extrabold text-slate-900">
-          Registrar Nuevo Bien
-        </Text>
+        <Text style={styles.headerTitle}>Registrar Nuevo Bien</Text>
       </View>
 
-      <ScrollView className="flex-1 px-4 py-5" showsVerticalScrollIndicator={false}>
-        <View className="bg-white rounded-3xl border border-slate-200 p-5 shadow-sm mb-6">
+      <ScrollView
+        style={styles.container}
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
+      >
+        <View style={styles.card}>
           {/* Código QR */}
-          <View className="mb-4">
-            <Text className="text-xs font-bold text-slate-700 uppercase tracking-wide mb-1">
-              Código QR / Etiqueta *
-            </Text>
-            <View className="flex-row items-center bg-blue-50/80 border border-blue-200 rounded-xl px-3 py-2.5">
-              <QrCode size={18} color="#1E3A8A" />
+          <View style={styles.inputGroup}>
+            <Text style={styles.label}>Código QR / Etiqueta *</Text>
+            <View style={styles.qrInputBox}>
+              <QrCode size={18} color={MARCONA_COLORS.blue} />
               <TextInput
-                className="flex-1 ml-2 font-mono text-sm font-bold text-blue-900"
+                style={styles.qrInput}
                 placeholder="MDM-00150"
+                placeholderTextColor={MARCONA_COLORS.slate400}
                 value={codigoQr}
                 onChangeText={setCodigoQr}
                 autoCapitalize="characters"
@@ -134,52 +135,48 @@ export default function NuevoBienScreen() {
           </View>
 
           {/* Nombre del Bien */}
-          <View className="mb-4">
-            <Text className="text-xs font-bold text-slate-700 uppercase tracking-wide mb-1">
-              Descripción o Nombre *
-            </Text>
+          <View style={styles.inputGroup}>
+            <Text style={styles.label}>Descripción o Nombre *</Text>
             <TextInput
-              className="bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-sm text-slate-800"
+              style={styles.input}
               placeholder="Ej: Laptop HP ProBook 450 G9"
+              placeholderTextColor={MARCONA_COLORS.slate400}
               value={nombre}
               onChangeText={setNombre}
             />
           </View>
 
           {/* Código Patrimonial SBN */}
-          <View className="mb-4">
-            <Text className="text-xs font-bold text-slate-700 uppercase tracking-wide mb-1">
-              Código Patrimonial SBN (Opcional)
-            </Text>
+          <View style={styles.inputGroup}>
+            <Text style={styles.label}>Código Patrimonial SBN (Opcional)</Text>
             <TextInput
-              className="bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-sm text-slate-800"
+              style={styles.input}
               placeholder="Ej: 740877000120"
+              placeholderTextColor={MARCONA_COLORS.slate400}
               value={codigoPatrimonial}
               onChangeText={setCodigoPatrimonial}
             />
           </View>
 
           {/* Categoría y Marca */}
-          <View className="flex-row gap-3 mb-4">
-            <View className="flex-1">
-              <Text className="text-xs font-bold text-slate-700 uppercase tracking-wide mb-1">
-                Categoría
-              </Text>
+          <View style={styles.row}>
+            <View style={styles.col}>
+              <Text style={styles.label}>Categoría</Text>
               <TextInput
-                className="bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-sm text-slate-800"
+                style={styles.input}
                 placeholder="Cómputo"
+                placeholderTextColor={MARCONA_COLORS.slate400}
                 value={categoria}
                 onChangeText={setCategoria}
               />
             </View>
 
-            <View className="flex-1">
-              <Text className="text-xs font-bold text-slate-700 uppercase tracking-wide mb-1">
-                Marca *
-              </Text>
+            <View style={styles.col}>
+              <Text style={styles.label}>Marca *</Text>
               <TextInput
-                className="bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-sm text-slate-800"
+                style={styles.input}
                 placeholder="HP, Lenovo..."
+                placeholderTextColor={MARCONA_COLORS.slate400}
                 value={marca}
                 onChangeText={setMarca}
               />
@@ -187,26 +184,24 @@ export default function NuevoBienScreen() {
           </View>
 
           {/* Modelo y N° Serie */}
-          <View className="flex-row gap-3 mb-4">
-            <View className="flex-1">
-              <Text className="text-xs font-bold text-slate-700 uppercase tracking-wide mb-1">
-                Modelo *
-              </Text>
+          <View style={styles.row}>
+            <View style={styles.col}>
+              <Text style={styles.label}>Modelo *</Text>
               <TextInput
-                className="bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-sm text-slate-800"
+                style={styles.input}
                 placeholder="ProBook 450..."
+                placeholderTextColor={MARCONA_COLORS.slate400}
                 value={modelo}
                 onChangeText={setModelo}
               />
             </View>
 
-            <View className="flex-1">
-              <Text className="text-xs font-bold text-slate-700 uppercase tracking-wide mb-1">
-                N.º de Serie
-              </Text>
+            <View style={styles.col}>
+              <Text style={styles.label}>N.º de Serie</Text>
               <TextInput
-                className="bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-sm text-slate-800 font-mono"
+                style={[styles.input, styles.monoText]}
                 placeholder="5CD2348KLM"
+                placeholderTextColor={MARCONA_COLORS.slate400}
                 value={numeroSerie}
                 onChangeText={setNumeroSerie}
                 autoCapitalize="characters"
@@ -215,57 +210,54 @@ export default function NuevoBienScreen() {
           </View>
 
           {/* Selector de Oficina */}
-          <View className="mb-4">
-            <Text className="text-xs font-bold text-slate-700 uppercase tracking-wide mb-1">
-              Oficina de Asignación *
-            </Text>
+          <View style={styles.inputGroup}>
+            <Text style={styles.label}>Oficina de Asignación *</Text>
             <TouchableOpacity
-              className="bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-3 flex-row items-center justify-between"
+              style={styles.selectorBtn}
               onPress={() => setOficinaModalVisible(true)}
+              activeOpacity={0.8}
             >
-              <View className="flex-row items-center flex-1 pr-2">
-                <Building size={16} color="#64748B" />
-                <Text className="text-sm font-semibold text-slate-800 ml-2" numberOfLines={1}>
+              <View style={styles.selectorLeft}>
+                <Building size={16} color={MARCONA_COLORS.slate500} />
+                <Text style={styles.selectorText} numberOfLines={1}>
                   {selectedOficina ? selectedOficina.nombre : 'Seleccionar Oficina'}
                 </Text>
               </View>
-              <ChevronDown size={16} color="#64748B" />
+              <ChevronDown size={16} color={MARCONA_COLORS.slate500} />
             </TouchableOpacity>
           </View>
 
           {/* Selector de Trabajador */}
-          <View className="mb-6">
-            <Text className="text-xs font-bold text-slate-700 uppercase tracking-wide mb-1">
-              Responsable / Custodio (Opcional)
-            </Text>
+          <View style={styles.inputGroup}>
+            <Text style={styles.label}>Responsable / Custodio (Opcional)</Text>
             <TouchableOpacity
-              className="bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-3 flex-row items-center justify-between"
+              style={styles.selectorBtn}
               onPress={() => setTrabajadorModalVisible(true)}
+              activeOpacity={0.8}
             >
-              <View className="flex-row items-center flex-1 pr-2">
-                <User size={16} color="#64748B" />
-                <Text className="text-sm font-semibold text-slate-800 ml-2" numberOfLines={1}>
+              <View style={styles.selectorLeft}>
+                <User size={16} color={MARCONA_COLORS.slate500} />
+                <Text style={styles.selectorText} numberOfLines={1}>
                   {selectedTrabajador ? selectedTrabajador.nombre_completo : 'Sin asignar (disponible)'}
                 </Text>
               </View>
-              <ChevronDown size={16} color="#64748B" />
+              <ChevronDown size={16} color={MARCONA_COLORS.slate500} />
             </TouchableOpacity>
           </View>
 
           {/* Botón Registrar */}
           <TouchableOpacity
-            className="bg-red-700 py-3.5 rounded-xl flex-row items-center justify-center shadow-md active:opacity-90"
+            style={styles.submitBtn}
             onPress={handleRegistrarBien}
             disabled={saving}
+            activeOpacity={0.88}
           >
             {saving ? (
-              <ActivityIndicator color="#FFFFFF" />
+              <ActivityIndicator color={MARCONA_COLORS.white} />
             ) : (
               <>
-                <PlusCircle size={18} color="#FFFFFF" />
-                <Text className="text-white font-extrabold text-base ml-2">
-                  Registrar Bien
-                </Text>
+                <PlusCircle size={18} color={MARCONA_COLORS.white} />
+                <Text style={styles.submitBtnText}>Registrar Bien</Text>
               </>
             )}
           </TouchableOpacity>
@@ -274,23 +266,21 @@ export default function NuevoBienScreen() {
 
       {/* Modal Oficina */}
       <Modal visible={oficinaModalVisible} transparent animationType="slide">
-        <SafeAreaView className="flex-1 bg-black/60 justify-end">
-          <View className="bg-white rounded-t-3xl p-5 max-h-[70%]">
-            <Text className="text-base font-extrabold text-slate-900 mb-3">
-              Seleccionar Oficina
-            </Text>
-            <ScrollView>
+        <SafeAreaView style={styles.modalBackdrop}>
+          <View style={styles.modalSheet}>
+            <Text style={styles.modalTitle}>Seleccionar Oficina</Text>
+            <ScrollView style={styles.modalScroll}>
               {oficinas.map((of) => (
                 <TouchableOpacity
                   key={of.id}
-                  className="py-3 px-3 border-b border-slate-100 flex-row justify-between"
+                  style={styles.modalItem}
                   onPress={() => {
                     setSelectedOficina(of);
                     setOficinaModalVisible(false);
                   }}
                 >
-                  <Text className="text-sm font-bold text-slate-800">{of.nombre}</Text>
-                  <Text className="text-xs text-blue-900 font-semibold">{of.sigla}</Text>
+                  <Text style={styles.modalItemName}>{of.nombre}</Text>
+                  <Text style={styles.modalItemSigla}>{of.sigla}</Text>
                 </TouchableOpacity>
               ))}
             </ScrollView>
@@ -300,32 +290,30 @@ export default function NuevoBienScreen() {
 
       {/* Modal Trabajador */}
       <Modal visible={trabajadorModalVisible} transparent animationType="slide">
-        <SafeAreaView className="flex-1 bg-black/60 justify-end">
-          <View className="bg-white rounded-t-3xl p-5 max-h-[70%]">
-            <Text className="text-base font-extrabold text-slate-900 mb-3">
-              Seleccionar Responsable
-            </Text>
-            <ScrollView>
+        <SafeAreaView style={styles.modalBackdrop}>
+          <View style={styles.modalSheet}>
+            <Text style={styles.modalTitle}>Seleccionar Responsable</Text>
+            <ScrollView style={styles.modalScroll}>
               <TouchableOpacity
-                className="py-3 px-3 border-b border-slate-100"
+                style={styles.modalItem}
                 onPress={() => {
                   setSelectedTrabajador(null);
                   setTrabajadorModalVisible(false);
                 }}
               >
-                <Text className="text-sm font-semibold text-slate-500">Dejar sin asignar</Text>
+                <Text style={styles.modalItemUnassigned}>Dejar sin asignar</Text>
               </TouchableOpacity>
               {trabajadores.map((t) => (
                 <TouchableOpacity
                   key={t.id}
-                  className="py-3 px-3 border-b border-slate-100"
+                  style={styles.modalItem}
                   onPress={() => {
                     setSelectedTrabajador(t);
                     setTrabajadorModalVisible(false);
                   }}
                 >
-                  <Text className="text-sm font-bold text-slate-800">{t.nombre_completo}</Text>
-                  <Text className="text-xs text-slate-400">{t.cargo}</Text>
+                  <Text style={styles.modalItemName}>{t.nombre_completo}</Text>
+                  <Text style={styles.modalItemSubtitle}>{t.cargo}</Text>
                 </TouchableOpacity>
               ))}
             </ScrollView>
@@ -335,3 +323,198 @@ export default function NuevoBienScreen() {
     </SafeAreaView>
   );
 }
+
+const styles = StyleSheet.create({
+  safeArea: {
+    flex: 1,
+    backgroundColor: MARCONA_COLORS.slate50,
+  },
+  header: {
+    backgroundColor: MARCONA_COLORS.white,
+    borderBottomWidth: 1,
+    borderBottomColor: MARCONA_COLORS.slate200,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  circleBtn: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: MARCONA_COLORS.slate100,
+    borderWidth: 1,
+    borderColor: MARCONA_COLORS.slate200,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 12,
+  },
+  headerTitle: {
+    fontSize: 16,
+    fontWeight: '800',
+    color: MARCONA_COLORS.slate900,
+  },
+  container: {
+    flex: 1,
+  },
+  scrollContent: {
+    paddingHorizontal: 16,
+    paddingTop: 16,
+    paddingBottom: 28,
+  },
+  card: {
+    backgroundColor: MARCONA_COLORS.white,
+    borderRadius: 20,
+    padding: 20,
+    borderWidth: 1,
+    borderColor: MARCONA_COLORS.slate200,
+  },
+  inputGroup: {
+    marginBottom: 16,
+  },
+  label: {
+    fontSize: 11,
+    fontWeight: '800',
+    color: MARCONA_COLORS.slate700,
+    textTransform: 'uppercase',
+    letterSpacing: 0.6,
+    marginBottom: 6,
+  },
+  qrInputBox: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: MARCONA_COLORS.blueLight,
+    borderWidth: 1,
+    borderColor: '#BFDBFE',
+    borderRadius: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+  },
+  qrInput: {
+    flex: 1,
+    marginLeft: 8,
+    fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace',
+    fontSize: 14,
+    fontWeight: '700',
+    color: MARCONA_COLORS.blue,
+  },
+  input: {
+    backgroundColor: MARCONA_COLORS.slate50,
+    borderWidth: 1,
+    borderColor: MARCONA_COLORS.slate200,
+    borderRadius: 12,
+    paddingHorizontal: 14,
+    paddingVertical: 11,
+    fontSize: 14,
+    color: MARCONA_COLORS.slate900,
+  },
+  monoText: {
+    fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace',
+  },
+  row: {
+    flexDirection: 'row',
+    gap: 12,
+    marginBottom: 16,
+  },
+  col: {
+    flex: 1,
+  },
+  selectorBtn: {
+    backgroundColor: MARCONA_COLORS.slate50,
+    borderWidth: 1,
+    borderColor: MARCONA_COLORS.slate200,
+    borderRadius: 12,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  selectorLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+    paddingRight: 8,
+  },
+  selectorText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: MARCONA_COLORS.slate800,
+    marginLeft: 8,
+  },
+  submitBtn: {
+    backgroundColor: MARCONA_COLORS.red,
+    height: 50,
+    borderRadius: 14,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 8,
+    ...Platform.select({
+      ios: {
+        shadowColor: MARCONA_COLORS.red,
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.3,
+        shadowRadius: 6,
+      },
+      android: {
+        elevation: 4,
+      },
+    }),
+  },
+  submitBtnText: {
+    color: MARCONA_COLORS.white,
+    fontSize: 15,
+    fontWeight: '800',
+    marginLeft: 8,
+  },
+  modalBackdrop: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.65)',
+    justifyContent: 'flex-end',
+  },
+  modalSheet: {
+    backgroundColor: MARCONA_COLORS.white,
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    padding: 20,
+    maxHeight: '70%',
+  },
+  modalTitle: {
+    fontSize: 16,
+    fontWeight: '800',
+    color: MARCONA_COLORS.slate900,
+    marginBottom: 14,
+  },
+  modalScroll: {
+    maxHeight: 300,
+  },
+  modalItem: {
+    paddingVertical: 12,
+    paddingHorizontal: 8,
+    borderBottomWidth: 1,
+    borderBottomColor: MARCONA_COLORS.slate100,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  modalItemName: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: MARCONA_COLORS.slate800,
+  },
+  modalItemSigla: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: MARCONA_COLORS.blue,
+  },
+  modalItemSubtitle: {
+    fontSize: 11,
+    color: MARCONA_COLORS.slate400,
+  },
+  modalItemUnassigned: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: MARCONA_COLORS.slate500,
+  },
+});
