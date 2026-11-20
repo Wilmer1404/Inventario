@@ -1,5 +1,5 @@
 import type { FC } from 'react';
-import { ShieldCheck, User } from 'lucide-react';
+import { User } from 'lucide-react';
 
 interface HeaderBarProps {
   userRole?: string;
@@ -10,8 +10,8 @@ export const HeaderBar: FC<HeaderBarProps> = ({ userRole = 'ADMIN', userName = '
   return (
     <header className="h-16 bg-white border-b border-slate-200 px-6 flex items-center justify-between shadow-sm">
       <div className="flex items-center gap-3">
-        <div className="w-10 h-10 bg-red-700 rounded-xl flex items-center justify-center text-white font-bold shadow">
-          <ShieldCheck size={22} />
+        <div className="w-10 h-10 bg-slate-50 border border-slate-200 rounded-xl flex items-center justify-center p-1 shadow-sm">
+          <img src="/escudo-marcona.png" alt="Escudo Marcona" className="w-8 h-8 object-contain" />
         </div>
         <div>
           <h1 className="text-base font-bold text-slate-800 leading-tight">

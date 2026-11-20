@@ -28,10 +28,7 @@ export const EscudoMarcona: React.FC<EscudoMarconaProps> = ({ size = 64, style }
   return (
     <Image
       source={require('../../assets/images/escudo-marcona.png')}
-      style={[
-        { width: size, height: size, borderRadius: Math.round(size * 0.25) },
-        style as any,
-      ]}
+      style={[{ width: size, height: size }, style as any]}
       resizeMode="contain"
       onError={() => setHasError(true)}
     />
