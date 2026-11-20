@@ -1,0 +1,16 @@
+<IfModule mod_rewrite.c>
+  RewriteEngine On
+  RewriteBase /
+
+  # No reescribir si la petición es hacia /api o /storage
+  RewriteCond %{REQUEST_URI} ^/(api|storage) [NC]
+  RewriteRule ^ - [L]
+
+  # Si el archivo o directorio existe físicamente, servirlo directamente
+  RewriteCond %{REQUEST_FILENAME} -f [OR]
+  RewriteCond %{REQUEST_FILENAME} -d
+  RewriteRule ^ - [L]
+
+  # Todas las demás peticiones van a index.html (SPA Fallback)
+  RewriteRule ^ index.html [L]
+</IfModule>
